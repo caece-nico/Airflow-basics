@@ -1,0 +1,2 @@
+https://my-json-server.typicode.com/typicode/demo/posts
+https://raw.githubusercontent.com/caece-nico/Airflow-basics/master/resources_installation/session5/customer.csv

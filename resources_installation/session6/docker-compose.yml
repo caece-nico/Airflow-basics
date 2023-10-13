@@ -1,0 +1,16 @@
+services:
+  mysql:
+    build: ./myssql/
+    volumes:
+      - ./mi_data:/var/lib/mysql
+    ports:
+      - '3306:3306'
+
+
+  airflow:
+    build: ./airflow/
+    volumes:
+      - ./dags:/opt/airflow/dags
+    ports:
+      - 8888:8080
+

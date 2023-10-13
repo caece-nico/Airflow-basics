@@ -1,0 +1,7 @@
+FROM mysql:5.7
+
+ENV MYSQL_ROOT_PASSWORD='sa'
+ENV MYSQL_DATABASE='sa'
+ENV MYSQL_USER = 'user'
+ENV MYSQL_PASS = 'pass'
+

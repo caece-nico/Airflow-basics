@@ -5,6 +5,7 @@
     - [DummyOperator](#DummyOperator)
     - [PythonOperator](#PythonOperator)
     - [BashOperator](#BashOperator)
+    - [SimpleHttpOperator](#SimpleHttpOperator)
 3. [Providers](#Providers)
     - [HttpSensor](#HttpSensor)
     - [Otros](#Otros)
@@ -105,6 +106,36 @@ task_1 = BasOperator(
 )
 ```
 
+### SimpleHttpOperator
+
+```python
+from airflow.providers.http.operators.http import SimpleHttpOperator
+```
+
+### Importante
+
+- Este operador generalmente trabaja junto al sensor [HttpSensor](#HttpSensor). Su función es obtener algo de una conexión web por ejemplo un archivo __.csv__
+- El resultado se puede pasar a un __PythonOperator__ para grabar el archivo, por ejemplo.
+
+```python
+def graba_json(respuesta):
+    with open('/opt/....', 'w') as f:
+        f.write(respuesta)
+    return True
+
+task_1 = SimpleHttpOperator(
+                                task_id = ''
+                                http_conn_id = 'mi_conn_app'
+                                endpoint= ''
+                                method = 'GET'
+                                log_resposne = True
+                                response_filter = lambda response: graba_json(response.text)
+                                dag = dag
+)
+```
+
+
+
 ## Providers
 
 ### HttpSensor
@@ -138,5 +169,7 @@ task_1 = HttpSensor(
 ### Como configurar la conexión para usar en un HttpSensor
 
 ![Alt text](imagenesTutorial/image-1.png)
+
+
 
 

@@ -7,6 +7,7 @@
     - [BashOperator](#BashOperator)
 3. [Providers](#Providers)
     - [HttpSensor](#HttpSensor)
+    - [Otros](#Otros)
 
 ## Introduccion
 
@@ -116,7 +117,7 @@ from airflow.providers.http.sensors.http import HttpSensor
 
 - Este sensor se usa para saber si un servicio web está activo o no.
 - Como es un provider es necesario declararlo en AIRFLOW desde admin-> connectios.
-- Este operador tiene un parametro __response_check__ que espera una funcion para que trabaje con la respuesta. Esta funcoi  debe devolver un bool
+- Este operador tiene un parametro __response_check__ que espera una funcion para que trabaje con la respuesta. Esta funcion  debe devolver un bool
 
 ```python
 def test_con(respuesta):
@@ -136,6 +137,6 @@ task_1 = HttpSensor(
 
 ### Como configurar la conexión para usar en un HttpSensor
 
-![Alt text](/imagenesTutorial/image-1.png)
+![Alt text](imagenesTutorial/image-1.png)
 
 

@@ -6,6 +6,7 @@
     - [PythonOperator](#PythonOperator)
     - [BashOperator](#BashOperator)
     - [SimpleHttpOperator](#SimpleHttpOperator)
+    - [MySqlOperator](#MySqlOperator)
 3. [Providers](#Providers)
     - [HttpSensor](#HttpSensor)
     - [Otros](#Otros)
@@ -134,7 +135,61 @@ task_1 = SimpleHttpOperator(
 )
 ```
 
+### MysqlOperator
 
+```python
+from airflow.operators.mysql_operator import MySqlOperator
+from airflow.hooks.mysql_hook import MySqlHook
+```
+
+#### Importante
+
+- Para poder trabajar con MySql necesitamos crear la conexión al igual que con [HttpSensor](#HttpSensor). Indicando la IP, del contenedor de Docker donde corre MySql. EL nombre de usuario, la pass y el esquema al que nos vamos a conectar.
+
+- ¿Quien maneja la conexión para inserts?
+
+El encargado de establecer la conexión y cerrarla es el __HOOK__.
+
+```python
+import json
+
+#creamos una tabla usando el operador
+
+crea_tabla_task = MySqlOperator(
+                                    task_id = ''
+                                    mysql_conn_id = ''
+                                    sql = r"""
+                                                sentencia sql ;
+                                            """
+                                    dag = dag
+)
+
+#insertamos registros usando el operador y hook.
+
+@mi_dag.task(task_id = '')
+def inserta_mysql_hook():
+    mysql_hook = MySqlHook(mysql_conn_id= '', schemma = '')
+    with open('opt/.....json','r') as f:
+        data = json.loads(f.read())
+        d_list = []
+        for items in data:
+            dlist.append((items['id'], items['title']))
+        target_field = ['post_id', 'post']
+        mysql_hook.inserts_rows(table='mi_tabla',rows=dlist, target_fields=target_field)
+
+
+```
+
+### Detalle
+
+- El __Hook__ necesita metadata para poder funcionar correctamente por eso debemos especificar.
+    - El nombre de la tabla donde vamos a insertar.
+    - Los campos de la tabla
+    - Y los datos en forma de tuplas.
+
+### Creamos la conexión.
+
+![Alt text](imagenesTutorial\ConexionMySql.png)
 
 ## Providers
 

@@ -13,6 +13,8 @@
 4. [Hooks](#Hooks)
     - [MySqlHook](#MySqlHook)
     - [S3Hook](#S3Hook)
+5. [Sensores](#Sensores)
+    - [FileSensor](#FileSensor)
 
 ## Introduccion
 
@@ -271,3 +273,43 @@ task_1 = PythonOperator(
 - Debemos crear un usuario y descargar la key y la secret key y guardarlo.
 
 ![Alt text](imagenesTutorial/S3Configuracion.png)
+
+
+## Sensores
+
+### FileSensor
+
+```python
+from airflow.sensors.fileSystem import FileSensor
+```
+
+### Importante
+
+- El __Filesensor__ sirve para detectar cuando un archivo es cargado en un carpeta para que podamos trabajar con el.
+- Hay que tener en cuenta que va a mantener lockeado un recurso para que llegue a su time out.
+
+```python
+
+def f_funcion(context):
+    print('Error')
+    return True
+
+task_filesensor = FileSensor(
+                                task_id = ''
+                                filepath='opt/...'
+                                poke_interval=in seconds
+                                timeout=in seconds
+                                on_failure=f_funcion
+                                dag=dag
+)
+
+def f_hace_algo():
+    print('Hay un archivo podemos hacer algo con el por ejemplo subirlo a s3 con el S3Hook')
+    return True
+
+abre_archivo = PythonOperator(
+                                task_id = ''
+                                python_callable = f_hace_algo
+                                dag = dag
+)
+```

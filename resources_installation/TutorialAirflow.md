@@ -5,6 +5,8 @@
     - [DummyOperator](#DummyOperator)
     - [PythonOperator](#PythonOperator)
     - [BashOperator](#BashOperator)
+3. [Providers](#Providers)
+    -[HttpSensor](#HttpSensor)
 
 ## Introduccion
 
@@ -56,7 +58,7 @@ task_1 = DummyOperator(
 task_1
 
 
-## PythonOperator
+### PythonOperator
 
 ```python
 from airflow.operators.python import PythonOperator
@@ -84,7 +86,7 @@ task_1 = PythonOperator(
 ```
 
 
-## BashOperator
+### BashOperator
 
 ```python
 from airflow.operators.bash_operator import BashOperator
@@ -101,3 +103,39 @@ task_1 = BasOperator(
                         dag = dag
 )
 ```
+
+## Providers
+
+### HttpSensor
+
+```python
+from airflow.providers.http.sensors.http import HttpSensor
+```
+
+### Importante
+
+- Este sensor se usa para saber si un servicio web está activo o no.
+- Como es un provider es necesario declararlo en AIRFLOW desde admin-> connectios.
+- Este operador tiene un parametro __response_check__ que espera una funcion para que trabaje con la respuesta. Esta funcoi  debe devolver un bool
+
+```python
+def test_con(respuesta):
+    if respuesta is not null:
+        print('Conexion establecida')
+    return True
+
+task_1 = HttpSensor(
+                        task_id =,
+                        http_conn_id='mi_conexion_app'
+                        endpoint='/caece-nico/Airflow-basics/master/resources_installation/session5/customer.csv'
+                        response_check=lambda response : test_con(response.text)
+                        poke_interval=segundos
+                        timeout=segundos
+)
+```
+
+### Como configurar la conexión para usar en un HttpSensor
+
+![Alt text](image-1.png)
+
+

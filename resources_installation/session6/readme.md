@@ -167,7 +167,7 @@ services:
 Para ejecutar un conjunto de contenedores en un docker ejecupamos el siguiente comando en el directorio donde se encuentra el archivo.
 
 ```docker
-docker-compose up .
+docker-compose up 
 ```
 ## Importante-AWS
 

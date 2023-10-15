@@ -189,7 +189,7 @@ def inserta_mysql_hook():
 
 ### Creamos la conexión.
 
-![Alt text](imagenesTutorial\ConexionMySql.png)
+![Alt text](imagenesTutorial/ConexionMySql.png)
 
 ## Providers
 

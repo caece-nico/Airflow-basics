@@ -136,6 +136,6 @@ task_1 = HttpSensor(
 
 ### Como configurar la conexión para usar en un HttpSensor
 
-![Alt text](image-1.png)
+![Alt text](/imagenesTutorial/image-1.png)
 
 

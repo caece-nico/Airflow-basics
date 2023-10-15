@@ -132,7 +132,7 @@ ENV MYSQL_USER = 'user'
 ENV MYSQL_PASS = 'pass'
 ```
 
-## - gitignore
+## gitignore
 
 El .gtignore es muy importante, acá indicamos lo que no queremos que se haga commit.
 En este caso no queremos committear lo que está en el directorio mi_data porque este directorio en un volumen donde se guarda toda la base de datos.

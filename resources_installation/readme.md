@@ -6,7 +6,7 @@
 1. [Requisitos](#Requisitos)
 1. [Airlfow](#Airflow)
     - [Dockerfile](#Dockerfile)
-    - [airflow_command.sh](#airflow_command.sh)
+    - [airflow_commands.sh](#airflow_commands.sh)
 2. [Ejecución](#Ejecucion)
 3. [Importante](#Importante)
 
@@ -14,7 +14,7 @@
 
 - En el directorio deben existir los archivos Dockerfile y airflow_commands.sh 
 
-## 1.a Dockerfile
+## Dockerfile
 
 Para Ejecutar una imagen en Docker primero creamos el archivo Dockerfile para instalar Python -> las bibliotecas necesarias de Airflow y luego Airflow. Tambien ejecuta el archivo __airflow_commandas.sh__ que inicializa variablkes necesarias de Airflow.
 

@@ -8,6 +8,7 @@
     - [Dockerfile](#Dockerfile)
     - [airflow_command.sh](#airflow_command.sh)
 2. [Ejecución](#Ejecucion)
+3. [Importante](#Importante)
 
 ## Requisitos
 
@@ -137,3 +138,7 @@ docker ps
 ```docker
 docker exec -it id_contenedor /bin/bash
 ```
+
+## Importante
+
+Ver documentación de ejecución a partir de la clase 6 con Docker-compose para usar bases de datos.

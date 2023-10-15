@@ -6,7 +6,7 @@
     - [PythonOperator](#PythonOperator)
     - [BashOperator](#BashOperator)
 3. [Providers](#Providers)
-    -[HttpSensor](#HttpSensor)
+    - [HttpSensor](#HttpSensor)
 
 ## Introduccion
 

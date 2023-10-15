@@ -245,7 +245,7 @@ from airflow.hooks.s3_hook import S3Hook
 ### Importante
 
 - El __S3Hook__ es similar al MySqlHook, tambien se usa para transferir datos de una fuente a otra usando alguna conexión existente en Airflow.
-- Para poder configuarar la conexion de __S3Hook__ es necesario instalar AWS cuando levantamos Docker. Esto esta incluido en el tutorial de [Docker-Compose](#session6\readme.md)
+- Para poder configuarar la conexion de __S3Hook__ es necesario instalar AWS cuando levantamos Docker. Esto esta incluido en el tutorial de [Docker-Compose](#session6/readme.md)
 
 ```python
 def f_copia_archivo(file_name, key, bucket_name):
@@ -270,4 +270,4 @@ task_1 = PythonOperator(
 
 - Debemos crear un usuario y descargar la key y la secret key y guardarlo.
 
-![Alt text](imagenesTutorial\S3Configuracion.png)
+![Alt text](imagenesTutorial/S3Configuracion.png)

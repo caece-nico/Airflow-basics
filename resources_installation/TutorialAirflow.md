@@ -1,6 +1,14 @@
 # Introducción a __AIRLFOW__
 
-1. ¿Qué es un DAG?
+1. [Introduccion](#Introduccion)
+2. [Operadores](#Operadores)
+    - [DummyOperator](#DummyOperator)
+    - [PythonOperator](#PythonOperator)
+    - [BashOperator](#BashOperator)
+
+## Introduccion
+
+- ¿Qué es un DAG? 
 
 Directly Acyclic Graph. Está formado por dags y tareas.
 
@@ -24,7 +32,9 @@ xx = DAG(
         )
 ```
 
-## creamos una tarea
+## Operadores
+
+### DummyOperator
 
 ```python
 task_1 = DummyOperator(
@@ -34,18 +44,18 @@ task_1 = DummyOperator(
 ```
 
 
-## Ejecucion
+### Ejecucion
 
 task_1
 
 
-# Introducción __OPERADOR PYTHON__
+## PythonOperator
 
 ```python
 from airflow.operators.python import PythonOperator
 ```
 
-## Importante
+### Importante
 
 El operador de Python llama a una funcion que puede estar declara en el mismo .py o en otro archivo.
 

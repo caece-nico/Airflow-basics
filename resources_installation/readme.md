@@ -139,6 +139,16 @@ docker ps
 docker exec -it id_contenedor /bin/bash
 ```
 
+- Cómo copiar un archivo de un contenedor a nuestro equipo local o viceversa
+
+```docker
+docker cp id_contenedor:/opt/airflow/file.conf file.conf
+```
+
+```docker
+docker cp file.conf id_contenedor:/opt/airflow/file.conf
+```
+
 ## Importante
 
 Ver documentación de ejecución a partir de la clase 6 con Docker-compose para usar bases de datos.

@@ -6,6 +6,7 @@
 2. [Requisitos](#Requisitos)
     - [Dockerfile](#Dockerfile)
     - [Airflow_commands.sh](#Airflow_commands.sh)
+    - [gitignore](#gitignore)
 3. [Docker-compose](#Docker-compose)
 4. [Ejecucion](#Ejecucion)
 5. [Importante-AWS](#Importante-AWS)
@@ -129,6 +130,15 @@ ENV MYSQL_ROOT_PASSWORD='sa'
 ENV MYSQL_DATABASE='sa'
 ENV MYSQL_USER = 'user'
 ENV MYSQL_PASS = 'pass'
+```
+
+## - gitignore
+
+El .gtignore es muy importante, acá indicamos lo que no queremos que se haga commit.
+En este caso no queremos committear lo que está en el directorio mi_data porque este directorio en un volumen donde se guarda toda la base de datos.
+
+```git
+mi_data/
 ```
 
 ## 3. Docker-compose

@@ -17,7 +17,6 @@ librerias importantes
 ```python
 from  datetime import datetime
 from airflow import DAG
-from airflow.operators.dummy_operator import DummyOperator
 ```
 
 ## Declaracion de un dag 
@@ -35,6 +34,14 @@ xx = DAG(
 ## Operadores
 
 ### DummyOperator
+
+```python
+from airflow.operators.dummy_operator import DummyOperator
+```
+
+### Importante
+
+- El operador __DUMMY__ se puede usar para crear o simular una arquitectura inicial y luego reemplazar cada tarea por el operador real
 
 ```python
 task_1 = DummyOperator(
@@ -73,5 +80,24 @@ task_1 = PythonOperator(
                             task_id = ''
                             python_callable=mi_funcion_python
                             dag = 
+)
+```
+
+
+## BashOperator
+
+```python
+from airflow.operators.bash_operator import BashOperator
+```
+
+### Importante
+
+- Ejecuta comandos bash como __sleep__ o __wget__ entre otros
+
+```python
+task_1 = BasOperator(
+                        task_id = 
+                        bash_command='sleep 2;otro comando'
+                        dag = dag
 )
 ```

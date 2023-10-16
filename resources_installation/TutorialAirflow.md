@@ -224,6 +224,10 @@ envia_email = EmailOperator(
 )
 ```
 
+### Cómo modificar el archivo de configuracion.
+
+![Alt text](imagenesTutorial/configuracion_airflow_mail.png)
+
 ## Providers
 
 ### HttpSensor

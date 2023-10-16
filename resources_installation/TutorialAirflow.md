@@ -8,6 +8,8 @@
     - [SimpleHttpOperator](#SimpleHttpOperator)
     - [MySqlOperator](#MySqlOperator)
     - [EmailOperator](#EmailOperator)
+    - [BranchOperator](#BranchOperator)
+    - [xcon](#xconn)
 3. [Providers](#Providers)
     - [HttpSensor](#HttpSensor)
     - [Otros](#Otros)
@@ -227,6 +229,92 @@ envia_email = EmailOperator(
 ### Cómo modificar el archivo de configuracion.
 
 ![Alt text](imagenesTutorial/configuracion_airflow_mail.png)
+
+
+### BranchOperator
+
+```python
+from airflow.operators.python import BranchPythonOperator
+```
+
+#### Importante
+
+- Es un operador para determinar el flujo de la ejecución de un sistema. Funciona como un IF ELSE.
+
+```python
+def f_controla():
+    if valor > 1:
+        'envia_mail'
+    else:
+        'graba_db'
+    return True
+
+
+task_1 = PythonBranchOperator(
+                                task_id = ''
+                                python_callable=f_controla
+                                dag = dag
+)
+
+envia_mail = EmailOperator(
+                            task_id = 'envia_mail'
+                            to = 
+                            subject = ''
+                            html_content = ''
+                            dag = dag
+)
+
+graba_db = PythonOperator(
+                            task_id ='graba_db'
+                            python_callable=mi_funcion_x
+                            dag=dag
+)
+
+task_1>>[envia_mail,graba_db ]
+```
+
+- El __BranchPythonOperator__ es una funcion de python que usa un IF ELSE para ejecutar otra funcion de Python u otro operador.
+- Estos operadores son tareas que se deben llamar en el IF ELSE por nombre.
+- Al momento de ejecutar el dag determina el camino que debe tomar.
+
+
+### xconn
+
+- Xconn no es propiamente un operador de Airflow. Se usa como mecanismo para intercambiar mensajes entre tareas.
+- Tiene dos componentes básicos: __xcon_push__ y __xcon_pull__.
+- Estos dos componentes son accesibles a travez de un parametro llamado __ti__ al que se accede desde una funcion python.
+
+```python
+def f_procesa_datos(ti):
+    dato = 10
+    ti.xcon_push(key='Nombre_xconn', value=dato)
+    return True
+
+tarea_procesa_datos = PythonOperator(
+                                        task_id = 'mi_tarea_xconn'
+                                        python_callable=f_procesa_datos,
+                                        dag=dag
+)
+```
+
+```python
+def f_controla_datos(ti):
+    valores = ti.xcon_pull(key='Nombre_xconn', task_ids=['mi_tarea_xconn'])
+    return True
+
+tarea_controla_datos = PythonOperator(
+                                        task_id = '',
+                                        python_callable= f_controla_datos,
+                                        dag = dag
+)
+```
+
+#### Importante
+
+__xcon_push__ tiene un parametro que lo identifica, __key__ es su nombre para que sea llamado por el xcon_pull.
+__xcon_pull__ debe tener la referencia a la tarea __pythonOperator__ que contiene al __xcon_push__
+
+
 
 ## Providers
 

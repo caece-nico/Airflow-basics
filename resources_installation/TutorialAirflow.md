@@ -7,6 +7,7 @@
     - [BashOperator](#BashOperator)
     - [SimpleHttpOperator](#SimpleHttpOperator)
     - [MySqlOperator](#MySqlOperator)
+    - [EmailOperator](#EmailOperator)
 3. [Providers](#Providers)
     - [HttpSensor](#HttpSensor)
     - [Otros](#Otros)
@@ -195,6 +196,33 @@ def inserta_mysql_hook():
 ### Creamos la conexión.
 
 ![Alt text](imagenesTutorial/ConexionMySql.png)
+
+
+### EmailOperator
+
+```python
+from airflow.operators.email_operator import EmailOperator
+```
+
+### Importante
+
+- Para usar el __EMAILOPERATOR__ es necesario configurar una cuenta de email que servirá como servidor smtp, para esto se debe modificar el archivo de configuracion de __airflow.cfg__.
+
+- Para modificar el __airflow.cfg__ lo vamos a copiar desde el contenedor a nuestra pc y luego copiarlo modificado.
+
+```docker
+mi_directorio> docker cp id_contenedor:/opt/.../airflow.cfg airflow.cfg
+```
+
+```python
+envia_email = EmailOperator(
+                                task_id = ''
+                                to='xxxx@xxxx.com'
+                                subject=''
+                                html_content=''
+                                dag=dag
+)
+```
 
 ## Providers
 

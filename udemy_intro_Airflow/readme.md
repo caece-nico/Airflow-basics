@@ -2,6 +2,7 @@
 
 1. [Introduccion](#1.-Introduccion)
     - [Requisitos]()
+        - [Entorno Virtual]()
     - [Core components]()
 2. [Arquitecturas de Airflow](#2.-Arquitecturas-de-airflow)
     - [Single Node]()
@@ -10,8 +11,37 @@
 3. [Instalar Apache Airflow](#3.-Instalar-apache-airflow)
     - [Logeo en Airflow WebServer]()
     - [Conociento Airflow UI]()
+4. [Proyecto Intro](#4.-proyecto-intro)
+    - [Introduccion]()
+    - [El primer DAG]()
+    - [Operadores y Providers]()
+    - [create a connection]()
 
 ## 1. Introduccion
+
+### Entorno Virtual.
+
+Para poder usar las etiquetas inteligentes debemos tener __Airflow__ instalado en nuestra maquina, pero para no interferir con otros paquetes lo vamos a instalar sobre un entorno virtual.
+
+1. Creacion del entorno virtual.
+
+[Podemos seguir este tutorial](https://saturncloud.io/blog/how-to-use-different-python-versions-with-virtualenv/)
+
+para ponder crear este entonro debemos tener el paquete __virtualenv__ 
+
+![](./img/creacion_entorno_virtual.png)
+
+2. Activamos el entorno virtual
+
+![](./img/activacion_entorno_virtual.png)
+
+3. Instalamos Airflow
+
+```shell
+pip install apache-airflow
+```
+
+Ahora deberiamos poder importar los paquetes de __Airflow__ desde el entorno virtual.
 
 __¿Porque necesitamos Airflow?__
 
@@ -226,5 +256,99 @@ Si vemos que los rectangulos se sobreponen es porque podemos eejcutar en paralel
 La usamos para ver el código. La verdadera utilidad es cuando queremos ver que el código que modificamos ya impacto en __Airflow__
 
 
+## 4. Proyecto Intro
+
+### 4.1 Introducción.
+
+Vamos a construit un __Pipelinne__.
+
+1. Creamos una tabla en Postgres
+2. Controlar si una API está disponible.
+3. Cargar datos.
+
+![](./img/airflow_pipeline_intro.png)
+
+Para recordar, __¿Qué es un DAG?__
+
+Es un Grafico Dirigido Aciclico o __Directed Aciclic Graph__
+Tenemos Nodos que se corresponden con las __Task__ y __Edges__ que indica la relacion entre las tareas.
+
+![](./img/airflow_dag_02.png)
+
+Estas relaciones pueden ser secuenciales o en Paralelo.
+
+__No hay loops en un DAG__
 
 
+### 4.3 creamos el primer DAG
+
+Lo primero que vamos a hacer es, es la carpeta __DAG__ creamos un archiov llamado __user_processing.py__
+
+```python
+from airfow import DAG
+from datetime import datetime
+
+with DAG('user_processing', start_date=datetime(2024,4,23),
+schedule_interval='@daily', catchup=False) as dag:
+    None
+```
+
+|parametros|detalle|
+|----------|-------|
+|start_date|Es la fecha en la que el dag será incorporado al scheduler|
+|schedule_interval|La frecuencia de ejecución.|
+|catchup|Indica si se deben ejecutar los __dags__ que no se hayan ejecutado desde la ultima ejecución o puesta en producción.| 
+
+
+### 4.4 Operadores
+
+En los DAGs tenemos varias tareas  y esas tareas se definen como __Operadores__
+
+![](./img/airflow_operators.png)
+
+Cuando definimos operadores debemos considerar que sean lo mas atómicos posible. Por ejemplo un operador que sejecuta la __tarea de limpiar datos__ y luego __procesar datos__, estaria mal, deben ser dos separados.
+
+_Existen tres tipos de Operadores_
+
+|operador|descripcion|
+|--------|-----------|
+|Action Operator|Eejcuta una funcion o comando, como bash o python|
+|Transfer Operators|Transfieren datos de una fuente a otra|
+|Sensor Operator|Se utilizar para esperar a cumplir con cierta condición.|
+
+Juntos con los __Operadores__ podemos acceder a otros servicios, como por ejemplo __AWS__ o __Dbt__ pero para poder usarlos necesitamos usar o instalar __Providers__
+
+```shell
+pip install apache-airflow-providers-amazon
+```
+
+![](./img/airflow_providers.png)
+
+
+### Creacion de una tabla.
+
+Una vez definido el DAG creamos una task para __crear una tabla__
+
+```python
+from airflow import DAG
+from airflow.providers.postgres.operators.postgres import PostgresOperator
+from datetime import datetime
+
+with DAG('user_processing', start_date = datetime(2024,1,1),
+schedule_interval = '@daily', ctachup = False) as dag:
+
+    create_table = PostgresOperator(
+        task_id = 'create_table',
+        postgres_conn_id = 'postgres',
+        sql = '''
+        CREATE TABLE IS NOT EXISTS users(
+            firstname TEXT NOT NULL,
+            lastname TEXT NOT NULL,
+            country TEXT NOT NULL,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,
+            email TEXT NOT NULL
+        );
+        '''
+        )
+```

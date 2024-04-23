@@ -187,9 +187,44 @@ Tambien vemos el último que ejecutó y el próximo que lo hará.
 
 ### Conociendo Airflow UI.
 
-CUando hacemos Click sobre un DAGS lo primero que vemos en the Grid View.
+1. The Grid View
+
+Cuando hacemos Click sobre un DAGS lo primero que vemos en the Grid View.
 Lo que nos permite es ver la historia de los estados del DAGS.
 Tambien nos muestra la cantidad total de __Task__ que contiene el DAG y los __Operators__ que usa.
+
+
+![](./img/airflow-webserver_grid_view.png)
+
+2. The Graph View
+
+La vista __graph view__ es muy útil porque nos ayuda a ver como está hecho el DAG y cuales son las dependencias de cada __Task__
+
+Al hacer click sobre cada __Task__ podemos ver propiedades de la misma.
+
+3. Landing View
+
+EL calendar view, es una vista que es útil a medida que vamos ejecutando una mayor cantidad de DAGs. Nos muestra el tiempo de ejecución de los __task__ y ver posibles optimizaciones y comparar contra otros DAGs.
+
+4. Calendar View
+
+En esta vista se ve la agregacion de cada ejecución por día de un DAG en particular. Nos ayuda a obtener patrones de patrones para ver que dias falla.
+
+![](./img/airflow-webserver_calendar_view_01.png)
+
+5. Gantt View
+
+Es una de las vistas mas útiles para encontrar __bottelnecks__ en nuestros DAGs.
+
+![](./img/airflow-webserver_gantt_view.png)
+
+Mientras mas largo sea el rectangulo, mas tiempo tarda en ejecutar.
+Si vemos que los rectangulos se sobreponen es porque podemos eejcutar en paralelo.
+
+6. Code View.
+
+La usamos para ver el código. La verdadera utilidad es cuando queremos ver que el código que modificamos ya impacto en __Airflow__
+
 
 
 

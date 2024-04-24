@@ -16,6 +16,11 @@
     - [El primer DAG]()
     - [Operadores y Providers]()
     - [create a connection]()
+    - [Ejecutar un task de prueba]()
+    - [Sensores]()
+    - [Extraccion de datos de la API]()
+    - [Python Operator]()
+    - [Extra - Hooks y carga de datos]()
 
 ## 1. Introduccion
 
@@ -341,7 +346,7 @@ schedule_interval = '@daily', ctachup = False) as dag:
         task_id = 'create_table',
         postgres_conn_id = 'postgres',
         sql = '''
-        CREATE TABLE IS NOT EXISTS users(
+        CREATE TABLE IF NOT EXISTS users(
             firstname TEXT NOT NULL,
             lastname TEXT NOT NULL,
             country TEXT NOT NULL,
@@ -351,4 +356,160 @@ schedule_interval = '@daily', ctachup = False) as dag:
         );
         '''
         )
+```
+
+Levantamos el contenedor de __Airflow__ y buscamos en __UI__ el nuevo dag.
+
+![](./img/airflow_first_dag_01.png)
+
+__IMPORTANTE__ el archivo .py debe estar en la carpeta de __DAGS__, la misma es un volumen externo del contenedor a nuestro equipo.
+
+Ahora debemos crear la conexión a __postgres__ para que nuestro DAG la pueda usar.
+
+![](./img/airflow-postgres_conn_01.png)
+
+
+### Ejecutar un task de prueba.
+
+Desde la linea de comando podemos entrar al contenedor del __Scheduler__ y probar un task de prueba.
+
+en la terminal escribimos
+
+```shell
+docker ps
+
+docker-compose ps
+```
+
+![](./img/docker-ps_01.png)
+
+y buscamos el nombre del contenedor del scheduler y escribimos:
+
+```shell
+docker exec -it docker-scheduler /bin/bash
+```
+
+![](./img/docker_exec_01.png)
+
+Ahora estamos dentro del contenedor del schedular y podemos ejecutar un __DAG__ de prueba.
+Para esto necesitamos el nombre de nuestro DAG y el de la Tarea que queremos ejecutar.
+
+```shell
+airflow tasks test _DAG_ID _TASK_ID
+```
+
+![](./img/docker_airflow_test_01.png)
+
+El resultado es __SUCCESSED__
+
+
+### Sensores
+
+```
+Los sensores son útiles cuando estamos esperando que algo ocurra antes de ejecutar una Task. Por ejemplo, esperar un archivo o a que una API este disponible.
+```
+
+Los sensores tienen dos propiedades importantes:
+
+|propiedad|descripcion|
+|---------|-----------|
+|timeout|El tiempo maximo de vida del sensor|
+|poke_interval|Por defecto son 60 segundos, ss el intervalo para verificar si la condicion es True|
+
+Agremoas un sensor en el proceso.
+
+
+1. Agregamos un __Sensor para saber si una API está disponible__
+
+```python
+from airflow.providers.http.sensors.http import HttpSensor
+
+is_api_available = HttpSensor(
+    task_id ='is_api_available',
+    http_conn_id='user_api',
+    endpoint = 'api/'
+)
+```
+
+__IMPORTANTE__ este sensor usa una API y necesita una connection que vamos a crear desde la UI.
+
+2. Extraccion de datos de la API.
+
+Una vez hecha la conexión a la API debemos extraer los datos, para lo cual usamos el __operador SimpleHttpOperator__
+
+```python
+from airflow.providers.http.operators.http import SimpleHttpOperator
+import json
+
+extract_user = SimpleHttpOperator(
+    task_id = 'extract_user',
+    http_conn_id = 'user_api',
+    endpoint = 'api/',
+    method = 'GET',
+    response_filter = lambda response: json.loads(response.text),
+    log_response=True
+    )
+```
+
+### Python Operator - Processing
+
+Una vez extraidos los datos de la API, los vamos a procesar con un __PythonOperator__
+
+```python
+import json
+from pandas import json_normalize
+from datetime import datetime
+from airflow.operators.python import PythonOperator
+
+def _process_user(ti):
+    user = ti.xcom_pull(task_ids="extract_user")
+    user = user['results'][0]
+    processed_user = json_normalize({
+        'firstname': user['name']['first'],
+        'lastname': user['name']['last'],
+        'country': user['location']['country'],
+        'username': user['login']['username'],
+        'password':user['login']['password'],
+        'email':user['email']})
+
+    processed_user.to_csv('/tmp/processed_user.csv', index=None, header=False)
+
+process_user = PythonOperator(
+    task_id = 'process_user',
+    python_callable = _process_user
+)
+```
+
+Cuando usamos una función de Pyhton que va a ser llamada desde un __PythonOperator__ le pasarmos un parametro que es __ti__ que significa __Task Instance__
+
+Hasta ahora el __DAG__ o Pipeline quedó así. Necesitamos agregarle las dependencias o __edges__
+
+![](./img/airflow_dag_user_procesing_01.png)
+
+
+### __¿Qué son los Hooks?__ y Carga de datos
+
+Son herramientas para interactuar con distintas tecnologias con un mayor nivel de abstracción.
+Por ejemplo usamos un __PostgresOperator__ para conectarnos a __Postgres__ pero detrás se usa __PostgresHook__
+
+![](./img/airflow_hook_01.png)
+
+Usando los __Hooks__ podemos obtener acceso a metodos que quizas con un __operator__ no.
+
+Ahora seguimos con la carga de los datos.
+
+```python
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+
+def _store_user():
+    hook = PostgresHook(postgres_conn_id = 'postgres')
+    hook.copy_expert(
+        sql="COPY users FROM stdin WITH DELIMITER as ','",
+        filename = '/tmp/processed_user.csv'
+    )
+
+store_user = PythonOperator(
+    task_id = 'store_user',
+    python_callable=_store_user
+    )
 ```

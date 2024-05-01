@@ -15,9 +15,9 @@ def _store_user():
         sql="COPY users FROM stdin WITH DELIMITER as ','",
         filename = '/tmp/processed_user.csv'
     )
-
 def _process_user(ti):
-    user = ti.xcom_pull(task_ids="extract_user")
+    
+    user = ti.xcom_pull(task_ids="extract_user") 
     user = user['results'][0]
     processed_user = json_normalize({
         'firstname': user['name']['first'],

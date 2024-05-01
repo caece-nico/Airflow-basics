@@ -21,6 +21,16 @@
     - [Extraccion de datos de la API]()
     - [Python Operator]()
     - [Extra - Hooks y carga de datos]()
+    - [Ejecucion del proceso y control]()
+    - [Schedule DAGS]()
+5. [Nueva forma de usar Scheduler](#5.-nueva-forma-de-usar-scheduler)
+    - [DataSets]()
+    - [Implementacion]()
+6. [Executors](#6.-executors)
+    - [Sequential]()
+    - [Local]()
+    - [Celery y flower]()
+
 
 ## 1. Introduccion
 
@@ -513,3 +523,398 @@ store_user = PythonOperator(
     python_callable=_store_user
     )
 ```
+
+Para comprobar que todo ejecutó OK vamos a entrar al contenedor de Postgres
+
+```shell
+docker-compose ps
+docker exec -it postgres-img-1 /bin/bash
+> psql -Uairflow
+```
+
+```sql
+select *
+from users;
+```
+
+![](./img/airflow_psql_01.png)
+
+
+### Schedule DAGs.
+
+|parametro|detalle|
+|---------|-------|
+|start_date|La fecha desde la cual el Scheduler intantará hacer el backfill|
+|schedule_interval| How often ejecuta.|
+|end_date|La fecha en la cual queremos que l dag deje de ejecutar|
+
+![](./img/airflow_scheduler_01.png)
+
+Hay que notar que entre cada intervalo espera 10 inutos hasta que comienza la proxima ejecución.
+
+El DAG es ejecutado a la fecha de la ultima ejecución + el __schedule Interval__
+
+### Backfilling y CatchUP
+
+Usamos CatchUp cuando queres ejecutar Dags que no se ejecutaron.
+Usamos Backfilling cuando queremos ejecutar DASGs anteriores a nuesro start_date.
+
+![](./img/airflow_scheduler_backfiling_01.png)
+
+En este ejemplo tenemos un DAG que creamos el 01/03 pero la primer ejecución fué el 01/07 como tiene activado el __CatchUp__ lo que va a hacer es ejecutar los tres __DAG RUNS__ que no se ejecutaron.
+
+El __backfilling__ es similar, solo que en lugar de ejecutar desde la ultima fecha que ejecutó, lo hacemos desde un punto anterior o __historia__
+
+EN este caso ejecutariamos el __01/01__ y el __01/02__.
+
+## 5. Nueva forma de usar Scheduler
+
+La forma tradicionar de __Agendar__ un DAG era definiendo un __TimeInterval__ ya sea __Diario__ __Mansual__ etc.
+La nueva forma de agendar DAGS es por medio de __Files Updates__.
+
+### 5.1 Casos de uso.
+
+1. Update sql
+
+```
+Tenemos el caso de un equipo de Ingenieria de datos que crea los DAGS T1 T2 y T3 que carga datos en SQL y otro equipom que tiene los DAGS TA TB y TC que lo consumen una vez cargado.
+```
+
+![](./img/airflow_new_feature_01.png)
+
+Para que un equipo se entere que los datos están disponibles se debe usar __TriggerOperator__ __ExternalTaskOperator__ pero son muy complejos.
+Que permiten desencadenar un DAGs luego de la ejecución de otro DAG.
+
+
+2. Update de file para disparar otro dag.
+
+Tenemos el caso donde queremos disparar un Trigger inmediatamente despues de haber hecho un update de datos __SIMILAR A UN CDC__
+
+![](./img/airflow_new_feature_02.png)
+
+
+3. Particion de Pipelines en Micro Pipelines.
+
+Tenemos un Pipeline con varios DAGS pero para facilitar el trabajo en equipos poemos dividirlo en __Micro Pipelines__ y estos __micro Pipelines__ dependen de otros usando el nuevo feature de __Scheduling__
+
+![](./img/airflow_new_feature_03.png)
+
+
+### 5.2 DataSets.
+
+Es una agrupación lógica de Data. No importa que sea un FILE o SQL.
+El DataSet tiene dos Propiedades:
+1. URI -> es el path al dataset o Identificador único.
+2. EXTRA -> informacion adicional en formato JSON.
+
+__ejemplo__
+
+```python
+from airflow import Dataset
+
+schemeless = Dataset("/path/file.txt")
+csv_file = Dataset("file.csv")
+
+my_file = Dataset(
+    "s3://dataset/file.csv",
+    extra={'owner':'james'}
+)
+```
+
+__Como se hacia antes y ahora__
+
+```python
+#before
+with DAG(schedule_intervl='@daily')
+
+with DAG(timetable=MyTimeTable)
+
+#Ahora.
+with DAG(schedule=)
+```
+
+_MyTimeTable_ es como un calendario que defino con la ejecución del PipeLine.
+
+__Ahora usamos _schedule_ donde podemos poner _crone expression_ _time delta object_ o _Dataset___
+
+
+### 5.3 Implementacion
+
+```python
+from airflow import DAG, Dataset
+from airflow.decorators import task
+
+from datetime import datetime
+
+my_file = Dataset("/tmp/my_file.txt")
+
+with DAG(
+    dag_id="procedurer",
+    schedule="@daily",
+    start_date=datetime(2024,1,1),
+    catchup=False
+):
+
+    @task(outlets=[my_file])
+    def update_dataset:
+        with open(my_file.uri , "a+") as f:
+            f.write("producer update")
+
+    update_dataset()
+```
+
+__from airflow.decorators import task__ Nos permite crear tareas de una forma mucho mas rápida.
+
+__@task(outlets=[my_file])__ es necesario indicar a __airflow__ que el task __update dataset__ actualiza el dataset __my_file__.
+
+
++ Este proceso es el encargado de hacer __update__ al archivo, es el __producer__. Este archivo debe ser consumido por un __consumer__
+
+```python
+from airflow import Dataset, DAG
+from airflow.decorators import task
+
+from datetime import datetime
+
+my_file = Dataset("tmp/my_file.txt")
+
+with DAG(
+    dag_id = "consumer",
+    schedule=[my_file],
+    startdate=datetime(2024,1,1),
+    catchup=False
+):
+
+    @task
+    def read_dataset():
+        with open(my_file.uri, "r") as r:
+            print(f.read())
+
+
+    read_dataset()
+```
+
++ Este proceso es el __consumer__ que debe hacer referencia al mismo archivo __schedule=[my_file]__. En el parametro __schedule__ ya no tenemos una __crone expression__ sino el archivo que se actualiza.
+
+### Ejecucion.
+
+![](./img/airflow_new_feature_UI.png)
+
+En la interfaz de Airflow vermos que tenemos los dos procesos creados y en el proceso del __consumidor__ vemos que su schedule es __Dataset__ lo que quiere decir que es ejecutado cuando hay cambios en el __file__
+
+![](./img/airflow_new_feature_UI_datasets.png)
+
+Si iniciamos el consumidor no pasará nada hasta que se ejecute el __Productor__
+
+Podemos tener uno o varios __Datasets__, pero si vamos a tener mas de uno hay que tener en cuenta que el DAG debe esperar por los dos __DAtasets__ y no solo uno.
+
+
+## 6. Executors
+
+Lo mas importante de los __Executors__ es que no ejecutan las tareas. Sino que define como se van a ejecutar las tareas o en que __sistemas__
+
+|tipo de ejecutor|descripcion|
+|----------------|-----------|
+|Sequential|Se ejecuta sobre la maquina local de una tarea a la vez|
+|Local|Se ejecutan multiples tareas sobre la maquina local|
+|celery|Se ejecuta sobre varios workers o varios clusters|
+|K8s|Se ejecuta sobre Kubernetes clusters en varias maquinas|
+
+__La forma del executor__ se define en el archivo __docker-compose__
+
+### 6.1 Default executor
+
+Para obtener el archivo de configuracion vamos a una terminar y escribimos.
+
+```cmd
+docker-compose ps
+docker cp material-airflow-scheduler-1:/opt/airflow/airflow.cfg .
+```
+
+Una vez descargado o copiado el __config__ file de Airflow podemos modificarlo.
+
+Dentro del archivo vemos que __executor__ está seteado en SequentialExecutor, esta configuracion viene del __docker-compose__
+
+#### ¿Porqué si docker-compose y airflow.cfg están distintos?
+
+porque __docker-composer__ modifica la variable de sistema 
+_AIRFLOW__CORE__EXECUTOR: CeleryExecutor_ haciendo que se ejecute con __celery__ por mas que en __airflow.cfg__ diga Sequential.
+
+#### 6.2 Sequential Executor.
+
+Este ejecutor trabaja con tareas secuenciales. Espera a la finalizacion de una tarea antes de empezar con otra. No tiene paralelismo.
+
+![](./img/airflow-sequential-01.png)
+
+En el caso de las tareas T2 y T3 primero ejecuta una luego la otra y con las dos finalizadas puede comenzar con T4.
+
+__Solo lo usamos con fines de Debugging o testing__
+
+
+#### 6.3 The Local Executor.
+
+Permite ejecutar multiples tareas al mismo tiempo pero sobre una única máquina.
+
+En esta configuración no se puede usar __sqlite__ debemos usar __postgres oracle etc__
+
+![](./img/airflow-local-01.png)
+
+En este ejemplo las tareas T2 y T3 se ejecutan en paralelo.
+
+```d
+executor=LocalExecutor
+
+sql_alchemy_conn=postgresql+psycopgq2://<user>:<password>@<host>/<db>
+```
+
+__El localExecutor no escala muy bien__ depende de los recursos que tengamos.
+
+#### 6.4 CeleryExecutor
+
+Se usa para incrementar el numero de tareas que podemos ejecutar el mismo timpo en varios clusters en varias máquinas.
+
+Este executor está compuesto por una __Celery Queue__ que tiene __result broker__ que almacena los resultados de las tareas ejecutadas y un __broker__ que es una cola que tiene las tareas que serán tomadas por los __workers__
+
+![](./img/airflow-celery-01.png)
+
+Para ejecutar este DAG airflow envia el las tareas del DAG al broker y espera hasta que la toma un broker, una vez completada almacena el estado en el Result Backend y continua con las tareas T2 y T3 que seran tomadas en forma simultanea por otros Workers.
+
+Para poder trabajar con este executor necesitamos instalar una cola de __redis__
+
+```d
+executor=CeleryExecutor
+
+sql_alchemy_conn=postgresql+psycopq2://<user>:<password>@<host>/<db>
+
+celery_result_backend=postgresql+psycopq2://<user>:<password>@<host>/<db>
+
+celery_broker_url=redis://:@redis:6379/0
+```
+
+__En este ejemplo tenemos configurado el executor en Celery con la base REdis y Postgres y un Worker__ tambien tenemos __flower__ para monitorear la ejecución de los workers.
+
+1. Creamos el archivo parallel.py para ejecutar tareas en paralelo.
+
+```python
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from datetime import datetime
+
+with DAG(
+    dag_id="parallel_example",
+    schedule="@daily",
+    start_date=datetime(2024,5,1),
+    catchup=False) as dag:
+    
+    extract_a = BashOperator(
+        task_id='extract_a',
+        bash_command="sleep 1"
+    )
+    
+    load_a = BashOperator(
+        task_id="load_a",
+        bash_command="sleep 1"
+    )
+    
+    extract_c = BashOperator(
+        task_id="extract_c",
+        bash_command="sleep 3"
+    )
+    
+    load_c = BashOperator(
+        task_id="load_c",
+        bash_command="sleep 2"
+    )
+    
+    transform = BashOperator(
+        task_id="transform",
+        bash_command="sleep 2"
+    )
+    
+    extract_a >> load_a
+    extract_c >> load_c
+    [load_a, load_c] >> transform
+
+```
+
+La vista nos muestra tareas que se ejecutan en paralelo.
+
+![](./img/airflow-parallel_01.png)
+
+Para monitorear esta tarea vamos a usar flower para monitorearlo pero para poder iniciar __flower__ neceitamos reiniciar __docker-compose__ con el comando
+
+```shell
+docker-compose down && docker-compose  --profile flower up -d
+```
+Ingresamos a: _localhost:5555__
+
+Esta vista nos muestra los procesos activos y sus estados y los workers disponibles y vemos la informacion del worker.
+Dentro de la vista de los __Wrokers__ tenemos el pool que estable la cantiad de teareas en paralelo que podemos ejecutar, por defecto 16.
+Hay otra pestaña __Queues__ donde podemos especificar tareas de alto consumo y hacer que sean tomadas solo por este worker.
+
+![](./img/airflow-flower-01.png)
+
+Cuando ejecutar el DAG vemos que __flower__ lo detecta y muestra la cantidad de tareas en ejecucion y las finalizadas.
+
+![](./img/airflow-flower-02.png)
+
+
+#### 6.4.1 ¿Como setear una Queue?
+
+Una Queue funciona como First in First Out. La primer tarea que ingresa es la primera que sale.
+
+Quizas tenemos la necesidad de encolar tareas que demanden distintos recursos por ejemplo:
+
+![](./img/airflow-queue-01.png)
+
+Por ejemplo un worker que tiene un GPU otro con mas recursos y otro con menos recuros. Esto lo podemos configurar usando __Queues__, incluso podemos crear una cola para modelos de __ML__
+
+Para este ejemplo vamos a crear un nuevo worker para definir a cual va ala cola.
+En el archivo __docker-compose__ copiamos el codigo de __worker__ y le ponemos un nuevo nombre __worker-2__ y reiniciamos docker-compose 
+
+```shell
+docker-compose down && docker-compose up -d
+docker-compose ps
+```
+
+Deberiamos ver dos workers al igual que en __flower__.
+
+
+
+```yaml
+airflow-worker-2:
+    <<: *airflow-common
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    environment:
+      <<: *airflow-common-env
+      # Required to handle warm shutdown of the celery workers properly
+      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
+      DUMB_INIT_SETSID: "0"
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+```
+
+Para crear una cola en un worker especifico lo que debemos hacer es, al codigo anterior le agregamos el comando:
+
+
+```yaml
+airflow-worker-2:
+    <<: *airflow-common
+    command: celery worker -q high_cpu
+    healthcheck:
+```
+
+De esta forma creamos un nuevo worker que contiene la cola __QUEUE__ high_cpu y podemos definir tareas que corran sobre esa cola.
+
+#### 6.5 Kubernetes
+

@@ -30,6 +30,9 @@
     - [Sequential]()
     - [Local]()
     - [Celery y flower]()
+    - [Especificar una task para una queue]()
+7. [Conceptos avanzados](#7.-conceptos-avanzados)
+    - [SubDAGs]()
 
 
 ## 1. Introduccion
@@ -880,7 +883,6 @@ docker-compose ps
 Deberiamos ver dos workers al igual que en __flower__.
 
 
-
 ```yaml
 airflow-worker-2:
     <<: *airflow-common
@@ -914,7 +916,31 @@ airflow-worker-2:
     healthcheck:
 ```
 
-De esta forma creamos un nuevo worker que contiene la cola __QUEUE__ high_cpu y podemos definir tareas que corran sobre esa cola.
+De esta forma creamos un nuevo worker que contiene la cola __QUEUE__ high_cpu y podemos definir tareas que corran sobre esa cola. Vemos que el nuevo worker tiene la nueva cola miestras que los otros trabajan con la cola default.
 
-#### 6.5 Kubernetes
+![](./img/airflow-queue-worker-01.png)
+
+
+#### 6.4.2 ¿Como enviar una tarea a una Queue?
+
+Dentro de nuestro DAG en cada operador podemos especificar un nuevo parametro __queue__ donde especificamos el nombre de la cola a la que lo queremos enviar.
+
+_Siguiendo con el ejemplo anterior_.
+
+```python
+    load_c = BashOperator(
+        task_id="load_c",
+        queue = 'high_cpu',
+        bash_command="sleep 2"
+    )
+```
+
+![](./img/airflow-queue-worker-02.png)
+
+vemos que cuanod lo ejecutamos el segundo worker toma la tarea que fué especificada porque es el que contiene la cola "high_cpu".
+
+
+## 7. Conceptos avanzados
+
+
 

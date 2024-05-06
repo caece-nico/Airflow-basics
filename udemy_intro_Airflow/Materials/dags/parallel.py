@@ -25,7 +25,8 @@ with DAG(
     
     load_c = BashOperator(
         task_id="load_c",
-        bash_command="sleep 10"
+        queue = 'high_cpu',
+        bash_command="sleep 30"
     )
     
     transform = BashOperator(

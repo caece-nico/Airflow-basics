@@ -1114,3 +1114,107 @@ Tambien podemos ver lo que hacer dentro del subDag haciendo __zoom subdag__ lueg
 
 ![](./img/airflow-subdags-05.png)
 
+
+### 7.2 TaskGroups.
+
+Los Task Groups son una vesión mejorada de los SubDags que permiten mas legibilidad y código ordenado. 
+
+__Los subDags fueron deprecados desde la version Airflow 2.2__
+
+1. Vamos a crear dentro de la carpeta __dags__ una subfolder on el nombre __groups__ con los archivos group_download.py y group_tarnsform.py
+
+
+2. group_transform.py
+
+```python
+
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.utils.task_group import TaskGroup
+
+
+def tarnsform_task():
+    with TaskGroup('transformGroup', tooltip="My transform task") as group:
+        
+        transform_a = BashOperator(
+            task_id="transform_a",
+            bash_command="sleep 1"
+        )
+        
+        transform_b = BashOperator(
+            task_id="transform_b",
+            bash_command="sleep 4"
+        )
+        
+        transform_c = BashOperator(
+            task_id="transform_c",
+            bash_command="sleep 1"
+        )
+        
+        
+    return group
+
+```
+
+3. group_download.py
+
+```python
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.utils.task_group import TaskGroup
+
+def download_task():
+    
+    with TaskGroup("downloadsGroup", tooltip="Download task") as group:
+        
+        download_a = BashOperator(
+            task_id = "Download_a",
+            bash_command= "sleep 10"
+        )
+        
+        download_b = BashOperator(
+            task_id="download_b",
+            bash_command="sleep 20"
+        )
+        
+        download_c = BashOperator(
+            task_id = "download_c",
+            bash_command="sleep 2"
+        )      
+        
+    return group
+```
+
+4. archivo py principal _group_dag_taskGroup.py__
+
+```python
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from groups.group_download import download_task
+from groups.group_transform import tarnsform_task
+
+from datetime import datetime
+
+with DAG(dag_id="TaksGrouped_dag", start_date=datetime(2024,5,18), 
+         schedule_interval="@daily", 
+         catchup=False) as dag:
+    
+    
+    downloads = download_task()
+    
+    checkfile = BashOperator(
+        task_id = "checkFile",
+        bash_command="sleep 2"
+    )
+
+    transform = tarnsform_task()
+    
+    
+    downloads >> checkfile >> transform
+```
+
+Deberiamos ver algo asi.
+
+![](./img/airflow-taskGroup-01.png)
+
+IMPORTANTE: __ Los nombres de las tareas deben ser únicos entre todos los dags, por eso a estas les ponemos downloadsGroup__ porque __downloads__ ya existia.

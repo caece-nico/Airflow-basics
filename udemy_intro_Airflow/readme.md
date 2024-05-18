@@ -36,6 +36,8 @@
     - [TaskGroups - Mejor que subdags]()
     - [Excahnge data]()
     - [Branches]()
+    - [Branches and triggers]()
+8. [Docker Executor](#8.-docker-executor)
 
 
 ## 1. Introduccion
@@ -1345,3 +1347,124 @@ with DAG(dag_id='myBranchDag', start_date=datetime(2024,5,18),
 ```
 Este ejemplo lo hicimos un poco mas complejo, ya que de la branch vamos a sacar otro xcom que se ejecute dentro del flujo destino con su propia clave.
 ```
+
+__¿Qué pasa si queremos agregar una task mas al final?__ 
+
+EL DAG va a fallar porque por defecto todas las tareas se deben ejecutar de forma correcta para ejecutar la siguiente. Pero esto se puede solucionar.
+__Esto se hace con Trigger rules__
+
+1. __all_success__
+
+Para ejecutar una tarea todas deben terminar correctamente.
+
+![](./img/airflow-trigger-01.png)
+
+
+Para ejecutar la tarea C tanto A como B deben terminar OK, en este caso A falló, entonces C tiene el estado __Ascendente fallido__
+
+2.- __all_failed__
+
+Queremos ejecutar una tarea si todas las demas fallan. De otra forma, con que una ejecute de forma correcta la que le sigue es ignorada.
+
+![](./img/airflow-trigger-02.png)
+
+3. __all_done__
+
+No nos importa el estado de las tareas anteriores, la que sigue siempre se ejecuta.
+
+![](./img/airflow-trigger-03.png)
+
+4. __one_success__
+
+Si una tarea ejecuta OK entonces la que le sigue se dispara, sin importan otras tareas.
+
+![](./img/airflow-trigger-04.png)
+
+5. __one_failed__
+
+Es la opuesta a 4. Si una falla la que le sigue se dispara.
+
+6. __none_failed__
+
+Si ninguna tarea falló o no se ejecutaron entonces la que sigue se ejecuta.
+
+![](./img/airflow-trigger-05.png)
+
+7. none_failed_min_one_success
+
+Si una tarea ejecutó ok y la otra o no se ejecutó o dió error de todas formas se dispara la que sigue. __Es muy util en los Branches__
+
+![](./img/airflow-trigger-06.png)
+
+### 7.4 Creamos un ejemplo de Branch y Trigger
+
+Este ejemplo es similar al anterior pero vamos a agregar una nueva tarea al final __t4__ y vamos a ahcer que se ejecute solo si una de las anterores ejecutó ok.
+
+```python
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator, BranchPythonOperator
+
+from datetime import datetime
+
+def _t1 (ti):
+    ti.xcom_push(key='key_t1', value = 34)
+
+def _t2(ti):
+    valor = ti.xcom_pull(key='valor_interno_branch', task_ids='brancherWithTrigger')
+    print(valor)
+    
+def _t3(ti):
+    valor = ti.xcom_pull(key='valor_interno_branch', task_ids='brancherWithTrigger')
+    print(valor)
+    
+def _t4():
+    print('Esta es la tarea final, no hace nada')
+
+def _brancher(ti):
+    valor = ti.xcom_pull(key='key_t1', task_ids='t1')
+    ti.xcom_push(key='valor_interno_branch', value = [23,45,67])
+    if valor >= 56:
+        return 't2'
+    return 't3'
+
+with DAG(dag_id = 'myBranchWithTrigger', start_date = datetime(2024,5,18), 
+         schedule_interval="@daily",
+         catchup=False) as dag:
+    
+    
+    t1 = PythonOperator(
+        task_id='t1',
+        python_callable=_t1
+    )
+    
+    t2 = PythonOperator(
+        task_id = 't2',
+        python_callable=_t2
+    )
+    
+    brancher = BranchPythonOperator(
+        task_id = 'brancherWithTrigger',
+        python_callable= _brancher
+    )
+    
+    t3 = PythonOperator(
+        task_id = 't3',
+        python_callable=_t3
+    )
+    
+    t4 = PythonOperator(
+        task_id='t4',
+        python_callable=_t4,
+        trigger_rule='none_failed_min_one_success'
+    )
+    
+    t1 >> brancher >> [t2, t3] >> t4
+    
+```
+
+![](./img/airflow-trigger-07.png)
+
+
+## 8. Docker Executor
+

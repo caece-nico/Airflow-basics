@@ -1,0 +1,31 @@
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from datetime import datetime
+
+def subdag_download(parent_dag, child_dag, args):
+    
+
+    with DAG(f"{parent_dag}.{child_dag}",
+             start_date=args['start_date'],
+             schedule_interval=args['schedule_interval'],
+             catchup=args['catchup']) as dag:
+        
+        download_a = BashOperator(
+            task_id = 'download_a',
+            bash_command='sleep 10'
+        )
+        
+
+        download_b = BashOperator(
+            task_id = 'download_b',
+            bash_command='sleep 10'
+        )
+        
+
+        download_c = BashOperator(
+            task_id = 'download_c',
+            bash_command='sleep 10'
+        )
+        
+        
+    return dag

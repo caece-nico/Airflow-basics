@@ -33,6 +33,7 @@
     - [Especificar una task para una queue]()
 7. [Conceptos avanzados](#7.-conceptos-avanzados)
     - [SubDAGs]()
+    - [TaskGroups - Mejor que subdags]()
 
 
 ## 1. Introduccion
@@ -943,4 +944,173 @@ vemos que cuanod lo ejecutamos el segundo worker toma la tarea que fué especifi
 ## 7. Conceptos avanzados
 
 
+### 7.1 SubDags
+
+```
+Un subDag es un Dag con las tareas que queremos agrupar.
+```
+
+Son una tecnica que nos permite agrupar tareas similares dentro de un único Dag y así evitar tareas repetitivas.
+
+
+![](./img/airflow-subdags-01.png)
+
+En este ejemplo vemos que tenemos tres tareas para __download__ un archivo y otras tres para procesarlos. Lo que podemos hacer es agruparlas para que quede mas legible.
+
+![](./img/airflow-subdags-02.png)
+
+Esto hace que podamos organizar mejor nuestro Dag.
+
+#### Creamos el siguiente Dag en la carpeta de dags.
+
+__El nombre del archivo es _group_dag.py___
+
+```python
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+ 
+from datetime import datetime
+ 
+with DAG('group_dag', start_date=datetime(2022, 1, 1), 
+    schedule_interval='@daily', catchup=False) as dag:
+ 
+    download_a = BashOperator(
+        task_id='download_a',
+        bash_command='sleep 10'
+    )
+ 
+    download_b = BashOperator(
+        task_id='download_b',
+        bash_command='sleep 10'
+    )
+ 
+    download_c = BashOperator(
+        task_id='download_c',
+        bash_command='sleep 10'
+    )
+ 
+    check_files = BashOperator(
+        task_id='check_files',
+        bash_command='sleep 10'
+    )
+ 
+    transform_a = BashOperator(
+        task_id='transform_a',
+        bash_command='sleep 10'
+    )
+ 
+    transform_b = BashOperator(
+        task_id='transform_b',
+        bash_command='sleep 10'
+    )
+ 
+    transform_c = BashOperator(
+        task_id='transform_c',
+        bash_command='sleep 10'
+    )
+ 
+    [download_a, download_b, download_c] >> check_files >> [transform_a, transform_b, transform_c]
+```
+
+Desde la vista de Airflow se veria así.
+
+![](./img/airflow-subdags-03.png)
+
+Para poder crear subDags lo que hacemos es.
+
+1. Creamos una nueva carpeta dentro de _Dags_ con el nombre __Subdags__
+y dentro de esta un nuevo archivo __subdag_downloads.py__
+
+EL concepto mas importante es que el .py que contendra los dags tiene una función que devuelve un __dag object__
+
+```python
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+
+def subdag_download(paren_dag_id, child_dag_id,  args):
+
+    with DAG(f"{parent_dag_id}.{child_dag_id}",
+    start_date=args['start_date'],
+    schedule_interval=args['schedule_interval'],
+    catchup=args['catchup']) as dag:
+
+        download_a = BashOperator(
+            task_id='download_a',
+            bash_command='sleep 10'
+        )
+
+        download_b = BashOperator(
+            task_id='download_b',
+            bash_command='sleep 5
+        )
+
+        doenload_c = BashOperator(
+            task_id='download_c',
+            bash_command='sleep 20'
+        )
+
+    return dag
+```
+
+2. En el directorio dags creamos un nuevo file que se llamará __group_dag_2.py__ que contendrá los subDags y agregamos las siguientes lineas.
+
+```python
+
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.operators.subdag import SubDagOperator
+from subdags.subdags_downloads import subdag_downloads
+
+from datetime import datetime
+
+with DAG('group_dag', start_date=datetime(2024,5,17),
+schedule_interval='@daily', catchup=False) as dag:
+
+    args = {'start_date':dag.start_date, 'schedule_interval':dag.schedule_interval, 'ctachup':dag.catchup}
+
+    downloads = SubDagOperator(
+        task_id='downloads',
+        subdag=subdag_dowloads(dag.dag_id, 'downloads', args)
+    )
+
+    checkfile = BashOperator(
+        task_id='checkfile',
+        bash_command='sleep 10'
+    )
+
+    load_a = BashOperator(
+        task_id='load_a',
+        bash_command='sleep 3'
+    )
+
+
+    load_b = BashOperator(
+        task_id='load_b',
+        bash_command='sleep 3'
+    )
+
+
+    load_c = BashOperator(
+        task_id='load_c',
+        command='sleep 3'
+    )
+
+    download >> checkfile >> [load_a, load_b, load_c]
+```
+
+3. Controlamos la vista en Graph.
+
+Se debería ver algo así.
+
+![](./img/airflow-subdags-04.png)
+
+```
+importante: El subdagId debe ser igual al taskId. En este caso es "downloads"
+y finalmente cambiamos las dependencias.
+Tambien deben coincidir start_date, catchup y schedule_interval.
+```
+
+Tambien podemos ver lo que hacer dentro del subDag haciendo __zoom subdag__ luego de la ejecucion.
+
+![](./img/airflow-subdags-05.png)
 

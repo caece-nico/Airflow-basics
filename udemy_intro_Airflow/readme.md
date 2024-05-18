@@ -34,6 +34,8 @@
 7. [Conceptos avanzados](#7.-conceptos-avanzados)
     - [SubDAGs]()
     - [TaskGroups - Mejor que subdags]()
+    - [Excahnge data]()
+    - [Branches]()
 
 
 ## 1. Introduccion
@@ -1218,3 +1220,128 @@ Deberiamos ver algo asi.
 ![](./img/airflow-taskGroup-01.png)
 
 IMPORTANTE: __ Los nombres de las tareas deben ser únicos entre todos los dags, por eso a estas les ponemos downloadsGroup__ porque __downloads__ ya existia.
+
+
+### 7.3 Exchange data between tasks
+
+Podemos compartir data enre tareas usando __XComs__
+
+![](./img/airflow-xcoms-01.png)
+
+Tenemos una tarea con los nombres de los archivos que queremos procesar, los sube a una cola Xcoms y la siguiente tarea toma estos nombres y los procesa.
+
+__XComs__ Cross Communication permite intercambiar pequeñas cantidades de datos. Según la BD puede ser de 2GB SqlLite a 64KB en MySql.
+
+Para poder compartir datos dentro del __XCom__ de cada funcion de Python debemos usar los métodos __push__ y __pull__ con __clave/valor__
+
+
+1. Queremos compartir data entre la tarea T1 y T2.
+
+```python
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+
+def _t1(ti):
+    ti.xcom_push(key='my_key', value=[42, 3,5,6])
+    
+def _t2(ti):
+    dato = ti.xcom_pull(key='my_key', task_ids = 't1')
+    for d in dato:
+        print(d)
+
+with DAG(dag_id="xcom_example", start_date=datetime(2024,5,18),
+         schedule_interval="@daily",
+         catchup=False) as xcom_e:
+    
+    t1 = PythonOperator(
+        task_id = "t1",
+        python_callable=_t1
+    )
+    
+    t2 = PythonOperator(
+        task_id="t2",
+        python_callable=_t2
+    )
+    
+    
+    
+    t1 >> t2
+```
+__¿Qué es ti?__
+
+Es un parametro que indica que estamos trabajando en esa instancia y tienen los metodos de __XComs__
+
+En el log de xcoms deberiamos ver algo así.
+
+![](./img/airflow-xcoms-02.png)
+
+
+### 7.3 Branches 
+
+En airflow podemos elegir una tarea u otra de acuerdo al flujo de ejecución que querramos. Usamos el BrachOperator.
+
+![](./img/airflow-branches-01.png)
+
+Para poder implementar una branch lo que hacemos es usar XCOms para pasar un valor de una funcion de python a otra y poder decicir por un flujo especifico.
+
+1. Creamos el archivo __branches.py__ para crear una branch.
+
+```python
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from airflow.operators.python import PythonOperator, BranchPythonOperator
+
+from datetime import datetime
+
+
+def _t1(ti):
+    ti.xcom_push(key='mi_clave', value=[1,0])
+
+def _t2(ti):
+    print('Se ha ejecutado la tarea t2')
+    final = ti.xcom_pull(key='clave_branch', task_ids='branchOp')
+    print(final)
+
+def _t3(ti):
+    print('se ha ejecutado la tarea t3')
+
+def _branch(ti):
+    value = ti.xcom_pull(key='mi_clave', task_ids='t1')
+    ti.xcom_push(key='clave_branch', value=[987,789])
+    if value[0] == 1:
+        return 't2'
+    return 't3'
+
+with DAG(dag_id='myBranchDag', start_date=datetime(2024,5,18),
+         schedule_interval="@daily",
+         catchup=False) as dag:
+    
+    t1 = PythonOperator(
+        task_id='t1',
+        python_callable=_t1
+    )
+    
+    branch = BranchPythonOperator(
+        task_id = 'branchOp',
+        python_callable=_branch
+        
+    )
+    
+    t2 = PythonOperator(
+        task_id='t2',
+        python_callable=_t2
+    )
+    
+    t3 = PythonOperator(
+        task_id='t3',
+        python_callable=_t3
+    )
+
+
+    t1 >> branch >> [t2, t3]
+```
+
+```
+Este ejemplo lo hicimos un poco mas complejo, ya que de la branch vamos a sacar otro xcom que se ejecute dentro del flujo destino con su propia clave.
+```
